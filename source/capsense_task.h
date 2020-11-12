@@ -1,13 +1,13 @@
 /*******************************************************************************
 * File Name: capsense_task.h
 *
-* Description: This file is the public interface of capsense_task.c source 
+* Description: This file is the public interface of capsense_task.c source
 *              file.
 *
 * Related Document: README.md
 *
 ********************************************************************************
-* Copyright (2019-2020), Cypress Semiconductor Corporation.
+* (c) 2019-2020, Cypress Semiconductor Corporation. All rights reserved.
 ********************************************************************************
 * This software, including source code, documentation and related materials
 * (“Software”), is owned by Cypress Semiconductor Corporation or one of its

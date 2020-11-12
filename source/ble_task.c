@@ -46,8 +46,10 @@
 #include "cyhal.h"
 #include "cycfg.h"
 #include "cy_retarget_io.h"
+#include "cycfg_gap.h"
 #include "cycfg_gatt_db.h"
-#include "app_bt_cfg.h"
+#include "cycfg_bt_settings.h"
+#include "app_platform_cfg.h"
 #include "wiced_bt_stack.h"
 #include "ble_task.h"
 
@@ -56,10 +58,9 @@
 *******************************************************************************/
 
 static void ble_app_init(void);
-static void ble_app_set_advertisement_data(void);
-static wiced_result_t ble_app_management_cb(wiced_bt_management_evt_t event, 
+static wiced_result_t ble_app_management_cb(wiced_bt_management_evt_t event,
                                     wiced_bt_management_evt_data_t *p_event_data);
-static wiced_bt_gatt_status_t ble_app_gatt_event_handler( wiced_bt_gatt_evt_t event, 
+static wiced_bt_gatt_status_t ble_app_gatt_event_handler( wiced_bt_gatt_evt_t event,
                                     wiced_bt_gatt_event_data_t *p_data);
 static wiced_bt_gatt_status_t ble_app_gatts_conn_status_cb(wiced_bt_gatt_connection_status_t *p_conn_status);
 static wiced_bt_gatt_status_t ble_app_gatts_req_cb(wiced_bt_gatt_request_type_t type,
@@ -99,7 +100,7 @@ void task_ble(void* param)
     /* Suppress warning for unused parameter */
     (void)param;
 
-    /* Configure platform specific settings */
+    /* Configure platform specific settings for the BT device */
     cybt_platform_config_init(&bt_platform_cfg_settings);
 
     /* Register call back and configuration with stack */
@@ -146,7 +147,7 @@ void task_ble(void* param)
 *
 *******************************************************************************/
 
-wiced_result_t ble_app_management_cb( wiced_bt_management_evt_t event, 
+wiced_result_t ble_app_management_cb( wiced_bt_management_evt_t event,
                                       wiced_bt_management_evt_data_t *p_event_data )
 {
     wiced_result_t status = WICED_BT_SUCCESS;
@@ -158,7 +159,6 @@ wiced_result_t ble_app_management_cb( wiced_bt_management_evt_t event,
             /* Bluetooth Controller and Host Stack Enabled */
             if (WICED_BT_SUCCESS == p_event_data->enabled.status)
             {
-                /* Bluetooth is enabled */
                 wiced_bt_dev_read_local_addr(bda);
                 printf("Local Bluetooth Address: ");
                 ble_print_bd_address(bda);
@@ -173,7 +173,7 @@ wiced_result_t ble_app_management_cb( wiced_bt_management_evt_t event,
         case BTM_BLE_ADVERT_STATE_CHANGED_EVT:
 
             /* Advertisement State Changed */
-            printf("Advertisement state change: 0x%x\r\n", 
+            printf("Advertisement state change: 0x%x\r\n",
                                         p_event_data->ble_advert_state_changed);
             break;
 
@@ -223,12 +223,12 @@ wiced_bt_gatt_status_t ble_app_gatts_conn_status_cb(
             /* Device has disconnected */
             printf("Disconnected Bluetooth device address:" );
             ble_print_bd_address(p_conn_status->bd_addr);
-            printf("\r\nConnection ID: 0x%x\r\n", p_conn_status->conn_id );
+            printf("Connection ID: 0x%x\r\n", p_conn_status->conn_id );
             /* Set the connection id to zero to indicate disconnected state */
             ble_connection_id = 0;
             /* Restart the advertisements */
             result = wiced_bt_start_advertisements(BTM_BLE_ADVERT_UNDIRECTED_HIGH, 0, NULL);
-                
+
             /* Failed to start advertisement. Stop program execution */
             if (CY_RSLT_SUCCESS != result)
             {
@@ -264,34 +264,31 @@ void ble_app_init( void )
 {
     wiced_bt_gatt_status_t status = WICED_BT_GATT_ERROR;
     wiced_result_t result = WICED_BT_ERROR;
-    wiced_bt_device_address_t  local_device_bd_addr;
+
     printf("Discover the device with name: \"%s\"\r\n\r\n", app_gap_device_name);
 
-    wiced_bt_dev_read_local_addr(local_device_bd_addr);
-
     /* Register with BT stack to receive GATT callback */
-    status=wiced_bt_gatt_register(ble_app_gatt_event_handler);
-
+    status = wiced_bt_gatt_register(ble_app_gatt_event_handler);
     printf("GATT event handler registration status: 0x%x\r\n", status);
 
     /* Initialize GATT Database */
-    status=wiced_bt_gatt_db_init(gatt_database, gatt_database_len, NULL);
-
+    status = wiced_bt_gatt_db_init(gatt_database, gatt_database_len, NULL);
     printf("GATT database initiliazation status: 0x%x\r\n", status);
 
     /* Disable pairing for this application */
-    wiced_bt_set_pairable_mode(WICED_FALSE, 0); 
+    wiced_bt_set_pairable_mode(WICED_FALSE, WICED_FALSE);
 
     /* Set Advertisement Data */
-    ble_app_set_advertisement_data();
+    wiced_bt_ble_set_raw_advertisement_data(CY_BT_ADV_PACKET_DATA_SIZE, cy_bt_adv_packet_data);
 
     /* Start Undirected LE Advertisements on device startup.
      * The corresponding parameters are contained in 'app_bt_cfg.c' */
     result = wiced_bt_start_advertisements(BTM_BLE_ADVERT_UNDIRECTED_HIGH, 0, NULL);
 
     /* Failed to start advertisement. Stop program execution */
-    if (CY_RSLT_SUCCESS != result)
+    if (WICED_BT_SUCCESS != result)
     {
+        printf("failed to start advertisement! \n");
         CY_ASSERT(0);
     }
 }
@@ -308,7 +305,7 @@ void ble_app_init( void )
 *  wiced_bt_gatt_event_data_t *p_event_data    : Pointer to BLE GATT event data
 *
 * Return:
-*  wiced_bt_gatt_status_t: See possible status codes in wiced_bt_gatt_status_e 
+*  wiced_bt_gatt_status_t: See possible status codes in wiced_bt_gatt_status_e
 *  in wiced_bt_gatt.h
 *
 ********************************************************************************/
@@ -347,44 +344,6 @@ wiced_bt_gatt_status_t ble_app_gatt_event_handler( wiced_bt_gatt_evt_t event,
          break;
      }
      return status;
-}
-
-
-/*******************************************************************************
-* Function Name: ble_app_set_advertisement_data()
-********************************************************************************
-* Summary:
-* This function configures the advertisement packet data
-*
-* Parameters:
-*  None
-*
-* Return:
-*  None
-*
-********************************************************************************/
-static void ble_app_set_advertisement_data(void)
-{
-    wiced_bt_ble_advert_elem_t adv_elem[3] = { 0 };
-    uint8_t adv_flag = BTM_BLE_GENERAL_DISCOVERABLE_FLAG | 
-                       BTM_BLE_BREDR_NOT_SUPPORTED;
-    uint8_t num_elem = 0;
-
-    /* Advertisement Element for Flags */
-    adv_elem[num_elem].advert_type = BTM_BLE_ADVERT_TYPE_FLAG;
-    adv_elem[num_elem].len = sizeof(uint8_t);
-    adv_elem[num_elem].p_data = &adv_flag;
-    num_elem++;
-
-    /* Advertisement Element for Name */
-    adv_elem[num_elem].advert_type = BTM_BLE_ADVERT_TYPE_NAME_COMPLETE;
-    adv_elem[num_elem].len = app_gap_device_name_len;
-    adv_elem[num_elem].p_data = app_gap_device_name;
-    num_elem++;
-
-    /* Set Raw Advertisement Data */
-    wiced_bt_ble_set_raw_advertisement_data(num_elem, adv_elem);
-
 }
 
 
@@ -428,7 +387,7 @@ static wiced_bt_gatt_status_t ble_app_get_value(wiced_bt_gatt_read_t *p_read_req
             {
                 /* Value fits within the supplied buffer; copy over the value */
                 *p_len = app_gatt_db_ext_attr_tbl[i].cur_len;
-                memcpy(p_val, app_gatt_db_ext_attr_tbl[i].p_data, 
+                memcpy(p_val, app_gatt_db_ext_attr_tbl[i].p_data,
                                 app_gatt_db_ext_attr_tbl[i].cur_len);
                 res = WICED_BT_GATT_SUCCESS;
 
@@ -463,7 +422,7 @@ static wiced_bt_gatt_status_t ble_app_get_value(wiced_bt_gatt_read_t *p_read_req
 ********************************************************************************
 * Summary:
 * This function handles writing to the attribute handle in the GATT database
-* using the data passed from the BT stack. The value to write is stored in a 
+* using the data passed from the BT stack. The value to write is stored in a
 * buffer whose starting address is passed as one of the function parameters
 *
 * Parameters:
@@ -471,7 +430,7 @@ static wiced_bt_gatt_status_t ble_app_get_value(wiced_bt_gatt_read_t *p_read_req
 *                                       Request including the attribute handle
 *
 * Return:
-*  wiced_bt_gatt_status_t: See possible status codes in wiced_bt_gatt_status_e 
+*  wiced_bt_gatt_status_t: See possible status codes in wiced_bt_gatt_status_e
 *  in wiced_bt_gatt.h
 *
 *******************************************************************************/
@@ -551,7 +510,7 @@ static wiced_bt_gatt_status_t ble_app_set_value(wiced_bt_gatt_write_t *p_write_r
 * This function handles Write Requests received from the client device
 *
 * Parameters:
-*  wiced_bt_gatt_write_t *p_write_req : Pointer that contains details of Write 
+*  wiced_bt_gatt_write_t *p_write_req : Pointer that contains details of Write
 *                                       Request including the attribute handle
 *
 * Return:
@@ -581,7 +540,7 @@ static wiced_bt_gatt_status_t ble_app_gatt_write_handler(wiced_bt_gatt_write_t *
 *                                      Request including the attribute handle
 *
 * Return:
-*  wiced_bt_gatt_status_t: See possible status codes in wiced_bt_gatt_status_e 
+*  wiced_bt_gatt_status_t: See possible status codes in wiced_bt_gatt_status_e
 *  in wiced_bt_gatt.h
 *
 *******************************************************************************/
@@ -653,7 +612,7 @@ static wiced_bt_gatt_status_t ble_app_gatts_req_cb(wiced_bt_gatt_request_type_t 
 void ble_send_notification(void)
 {
     wiced_bt_gatt_status_t status = WICED_BT_GATT_ERROR;
-    
+
     if((GATT_CLIENT_CONFIG_NOTIFICATION == \
                                     app_capsense_slider_client_char_config[0])
                                     && (0 != ble_connection_id))

@@ -6,7 +6,7 @@
 * Related Document: README.md
 *
 ********************************************************************************
-* Copyright (2019-2020), Cypress Semiconductor Corporation.
+* (c) 2019-2020, Cypress Semiconductor Corporation. All rights reserved.
 ********************************************************************************
 * This software, including source code, documentation and related materials
 * (“Software”), is owned by Cypress Semiconductor Corporation or one of its
@@ -41,6 +41,8 @@
 * Header files includes
 *******************************************************************************/
 
+#include "cybsp.h"
+#include "cyhal.h"
 #include "cycfg.h"
 #include "cycfg_capsense.h"
 #include "FreeRTOS.h"
@@ -55,19 +57,7 @@
 /*******************************************************************************
 * Global constants
 *******************************************************************************/
-#define CSD_COMM_HW                 (SCB3)
-#define CSD_COMM_IRQ                (scb_3_interrupt_IRQn)
-#define CSD_COMM_PCLK               (PCLK_SCB3_CLOCK)
-#define CSD_COMM_CLK_DIV_HW         (CY_SYSCLK_DIV_8_BIT)
-#define CSD_COMM_CLK_DIV_NUM        (1U)
-#define CSD_COMM_CLK_DIV_VAL        (3U)
-#define CSD_COMM_SCL_PORT           (GPIO_PRT6)
-#define CSD_COMM_SCL_PIN            (0u)
-#define CSD_COMM_SDA_PORT           (GPIO_PRT6)
-#define CSD_COMM_SDA_PIN            (1u)
-#define CSD_COMM_SCL_HSIOM_SEL      (P6_0_SCB3_I2C_SCL)
-#define CSD_COMM_SDA_HSIOM_SEL      (P6_1_SCB3_I2C_SDA)
-#define CAPSENSE_INTERRUPT_PRIORITY (7u)
+#define CAPSENSE_INTERRUPT_PRIORITY    (7u)
 #define EZI2C_INTERRUPT_PRIORITY    (6u)    /* EZI2C interrupt priority must be
                                              * higher than CapSense interrupt
                                              */
@@ -84,7 +74,7 @@ static void process_touch(void);
 static void capsense_isr(void);
 static void capsense_end_of_scan_callback(cy_stc_active_scan_sns_t* active_scan_sns_ptr);
 static void capsense_timer_callback(TimerHandle_t xTimer);
-static void ezi2c_isr(void);
+void handle_error(void);
 
 
 /*******************************************************************************
@@ -93,6 +83,46 @@ static void ezi2c_isr(void);
 QueueHandle_t capsense_command_q;
 TimerHandle_t scan_timer_handle;
 cy_stc_scb_ezi2c_context_t ezi2c_context;
+cyhal_ezi2c_t sEzI2C;
+cyhal_ezi2c_slave_cfg_t sEzI2C_sub_cfg;
+cyhal_ezi2c_cfg_t sEzI2C_cfg;
+
+/* SysPm callback params */
+cy_stc_syspm_callback_params_t callback_params =
+{
+    .base       = CYBSP_CSD_HW,
+    .context    = &cy_capsense_context
+};
+
+cy_stc_syspm_callback_t capsense_deep_sleep_cb =
+{
+    Cy_CapSense_DeepSleepCallback,
+    CY_SYSPM_DEEPSLEEP,
+    (CY_SYSPM_SKIP_CHECK_FAIL | CY_SYSPM_SKIP_BEFORE_TRANSITION | CY_SYSPM_SKIP_AFTER_TRANSITION),
+    &callback_params,
+    NULL,
+    NULL
+};
+/*******************************************************************************
+* Function Name: handle_error
+********************************************************************************
+* Summary:
+* User defined error handling function
+*
+* Parameters:
+*  void
+*
+* Return:
+*  void
+*
+*******************************************************************************/
+void handle_error(void)
+{
+    /* Disable all interrupts. */
+    __disable_irq();
+
+    CY_ASSERT(0);
+}
 
 
 /*******************************************************************************
@@ -219,11 +249,11 @@ static void process_touch(void)
     static uint32_t button0_status_prev = 0;
     static uint32_t button1_status_prev = 0;
     static uint16_t slider_pos_perv = 0;
-    
+
     /* Variables used for storing slider data */
     static ble_capsense_data_t ble_capsense_data = {0};
     /* Variables used for storing command and data for LED Task */
-    led_command_data_t led_cmd_data = {0};
+    led_command_data_t led_cmd_data;
     bool send_led_command = false;
 
 
@@ -324,27 +354,33 @@ static cy_status capsense_init(void)
 
     /*Initialize CapSense Data structures */
     status = Cy_CapSense_Init(&cy_capsense_context);
-    if(CY_RET_SUCCESS == status)
+    if (CYRET_SUCCESS != status)
     {
-        /* Initialize CapSense interrupt */
-        if(CY_SYSINT_SUCCESS != Cy_SysInt_Init(&capSense_intr_config, &capsense_isr))
-        {
-            printf("CapSense interrupt initilization failed!\r\n");
-        }
-        NVIC_ClearPendingIRQ(capSense_intr_config.intrSrc);
-        NVIC_EnableIRQ(capSense_intr_config.intrSrc);
-
-        /* Register end of scan callback */
-        status = Cy_CapSense_RegisterCallback(CY_CAPSENSE_END_OF_SCAN_E,
-                capsense_end_of_scan_callback, &cy_capsense_context);
-
-        if(CY_RET_SUCCESS == status)
-        {
-            /* Initialize the CapSense firmware modules. */
-            status = Cy_CapSense_Enable(&cy_capsense_context);
-        }
+        return status;
     }
-    
+
+    /* Initialize CapSense interrupt */
+    Cy_SysInt_Init(&capSense_intr_config, &capsense_isr);
+    NVIC_ClearPendingIRQ(capSense_intr_config.intrSrc);
+    NVIC_EnableIRQ(capSense_intr_config.intrSrc);
+
+    /* Initialize the CapSense deep sleep callback functions. */
+    Cy_CapSense_Enable(&cy_capsense_context);
+    Cy_SysPm_RegisterCallback(&capsense_deep_sleep_cb);
+    /* Register end of scan callback */
+    status = Cy_CapSense_RegisterCallback(CY_CAPSENSE_END_OF_SCAN_E,
+                                              capsense_end_of_scan_callback, &cy_capsense_context);
+    if (CYRET_SUCCESS != status)
+    {
+        return status;
+    }
+    /* Initialize the CapSense firmware modules. */
+    status = Cy_CapSense_Enable(&cy_capsense_context);
+    if (CYRET_SUCCESS != status)
+    {
+        return status;
+    }
+
     return status;
 }
 
@@ -386,6 +422,7 @@ static void capsense_end_of_scan_callback(cy_stc_active_scan_sns_t* active_scan_
 *******************************************************************************/
 static void capsense_timer_callback(TimerHandle_t xTimer)
 {
+    Cy_CapSense_Wakeup(&cy_capsense_context);
     capsense_command_t command = CAPSENSE_SCAN;
     BaseType_t xYieldRequired;
 
@@ -411,19 +448,6 @@ static void capsense_isr(void)
 
 
 /*******************************************************************************
-* Function Name: ezi2c_isr
-********************************************************************************
-* Summary:
-*  Wrapper function for handling interrupts from EZI2C block.
-*
-*******************************************************************************/
-static void ezi2c_isr(void)
-{
-    Cy_SCB_EZI2C_Interrupt(CSD_COMM_HW, &ezi2c_context);
-}
-
-
-/*******************************************************************************
 * Function Name: tuner_init
 ********************************************************************************
 * Summary:
@@ -432,61 +456,25 @@ static void ezi2c_isr(void)
 *******************************************************************************/
 static void tuner_init(void)
 {
-    /* EZI2C configuration structure */
-    const cy_stc_scb_ezi2c_config_t csd_comm_config =
-    {
-        .numberOfAddresses = CY_SCB_EZI2C_ONE_ADDRESS,
-        .slaveAddress1 = 8U,
-        .slaveAddress2 = 0U,
-        .subAddressSize = CY_SCB_EZI2C_SUB_ADDR16_BITS,
-        .enableWakeFromSleep = false,
-    };
+    cy_rslt_t result;
+    /* Configure Capsense Tuner as EzI2C Slave */
+    sEzI2C_sub_cfg.buf = (uint8 *)&cy_capsense_tuner;
+    sEzI2C_sub_cfg.buf_rw_boundary = sizeof(cy_capsense_tuner);
+    sEzI2C_sub_cfg.buf_size = sizeof(cy_capsense_tuner);
+    sEzI2C_sub_cfg.slave_address = 8U;
 
-    /* EZI2C interrupt configuration structure */
-    static const cy_stc_sysint_t ezi2c_intr_config =
-    {
-        .intrSrc = CSD_COMM_IRQ,
-        .intrPriority = EZI2C_INTERRUPT_PRIORITY,
-    };
-    
-    /* Initialize EZI2C pins */
-    Cy_GPIO_Pin_FastInit(CSD_COMM_SCL_PORT, CSD_COMM_SCL_PIN,
-                         CY_GPIO_DM_OD_DRIVESLOW, 1, CSD_COMM_SCL_HSIOM_SEL);
-    Cy_GPIO_Pin_FastInit(CSD_COMM_SDA_PORT, CSD_COMM_SDA_PIN,
-                         CY_GPIO_DM_OD_DRIVESLOW, 1, CSD_COMM_SDA_HSIOM_SEL);
-
-    /* Configure EZI2C clock */
-    Cy_SysClk_PeriphDisableDivider(CSD_COMM_CLK_DIV_HW, CSD_COMM_CLK_DIV_NUM);
-    Cy_SysClk_PeriphAssignDivider(CSD_COMM_PCLK, CSD_COMM_CLK_DIV_HW,
-                                  CSD_COMM_CLK_DIV_NUM);
-    Cy_SysClk_PeriphSetDivider(CSD_COMM_CLK_DIV_HW, CSD_COMM_CLK_DIV_NUM,
-                                   CSD_COMM_CLK_DIV_VAL);                                
-    Cy_SysClk_PeriphEnableDivider(CSD_COMM_CLK_DIV_HW, CSD_COMM_CLK_DIV_NUM);
-    
-
-    /* Initialize EZI2C */
-    if(CY_SCB_EZI2C_SUCCESS != Cy_SCB_EZI2C_Init(CSD_COMM_HW, &csd_comm_config, &ezi2c_context))
+    sEzI2C_cfg.data_rate = CYHAL_EZI2C_DATA_RATE_400KHZ;
+    sEzI2C_cfg.enable_wake_from_sleep = true;
+    sEzI2C_cfg.slave1_cfg = sEzI2C_sub_cfg;
+    sEzI2C_cfg.sub_address_size = CYHAL_EZI2C_SUB_ADDR16_BITS;
+    sEzI2C_cfg.two_addresses = false;
+    result = cyhal_ezi2c_init( &sEzI2C, CYBSP_I2C_SDA, CYBSP_I2C_SCL, NULL, &sEzI2C_cfg);
+    if (result != CY_RSLT_SUCCESS)
     {
         printf("Tuner initilization failed!");
+        handle_error();
     }
 
-    /* Initialize and enable EZI2C interrupts */
-    if(CY_SYSINT_SUCCESS != Cy_SysInt_Init(&ezi2c_intr_config, ezi2c_isr))
-    {
-        printf("Tuner interrupt initilization failed!");
-    }
-
-    NVIC_EnableIRQ(ezi2c_intr_config.intrSrc);
-
-    /* Set up communication data buffer to CapSense data structure to be exposed
-     * to I2C master at primary slave address request.
-     */
-    Cy_SCB_EZI2C_SetBuffer1(CSD_COMM_HW, (uint8 *)&cy_capsense_tuner,
-                            sizeof(cy_capsense_tuner), sizeof(cy_capsense_tuner),
-                            &ezi2c_context);
-
-    /* Enable EZI2C block */
-    Cy_SCB_EZI2C_Enable(CSD_COMM_HW);
 }
 
 

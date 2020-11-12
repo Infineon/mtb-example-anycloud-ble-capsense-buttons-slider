@@ -1,12 +1,4 @@
 /*******************************************************************************
-* File Name: main.c
-*
-* Description: This is the source code for the AnyCloud: BLE Capsense Buttons
-*              Slider Example for ModusToolbox.
-*
-* Related Document: See README.md
-*
-********************************************************************************
 * (c) 2020, Cypress Semiconductor Corporation. All rights reserved.
 ********************************************************************************
 * This software, including source code, documentation and related materials
@@ -38,6 +30,15 @@
 * indemnify Cypress against all liability.
 *******************************************************************************/
 
+/*******************************************************************************
+* File Name: main.c
+*
+* Description: This is the source code for the AnyCloud: BLE Capsense Buttons
+*              Slider Example for ModusToolbox.
+*
+* Related Document: See README.md
+*
+*******************************************************************************/
 /*******************************************************************************
 *        Header Files
 *******************************************************************************/
@@ -72,6 +73,13 @@
 /* Queue lengths of message queues used in this project */
 #define SINGLE_ELEMENT_QUEUE        (1u)
 
+
+/******************************************************************************
+* Global Variables
+******************************************************************************/
+/* This enables RTOS aware debugging. */
+volatile int uxTopUsedPriority;
+
 /******************************************************************************
  *                          Function Definitions
  ******************************************************************************/
@@ -81,6 +89,9 @@
 int main(void)
 {
     cy_rslt_t result = CY_RSLT_SUCCESS;
+
+    /* This enables RTOS aware debugging in OpenOCD. */
+    uxTopUsedPriority = configMAX_PRIORITIES - 1;
 
     /* Initialize the board support package */
     result = cybsp_init();
@@ -102,7 +113,7 @@ int main(void)
     /* \x1b[2J\x1b[;H - ANSI ESC sequence to clear screen */
     printf("\x1b[2J\x1b[;H");
     printf("*****************AnyCloud Example******************\r\n");
-    printf("*****Capsense Buttons Slider Application Start*****\r\n");
+    printf("*****BLE Capsense Buttons & Slider Application*****\r\n");
     printf("***************************************************\r\n\r\n");
 
     /* Create the queues. See the respective data-types for details of queue

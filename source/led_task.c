@@ -6,7 +6,7 @@
 * Related Document: README.md
 *
 ********************************************************************************
-* Copyright (2019-2020), Cypress Semiconductor Corporation.
+* (c) 2019-2020, Cypress Semiconductor Corporation. All rights reserved.
 ********************************************************************************
 * This software, including source code, documentation and related materials
 * (“Software”), is owned by Cypress Semiconductor Corporation or one of its
@@ -52,7 +52,7 @@
 #define PWM_LED_FREQ_HZ     (1000000u)  /* in Hz */
 
 /* subtracting from 100 since the LED is connected in active low configuration */
-#define GET_DUTY_CYCLE(x)   (100 - x)   
+#define GET_DUTY_CYCLE(x)   (100 - x)
 
 /*******************************************************************************
  * Global variable
