@@ -360,7 +360,7 @@ static cy_status capsense_init(void)
     }
 
     /* Initialize CapSense interrupt */
-    Cy_SysInt_Init(&capSense_intr_config, &capsense_isr);
+    cyhal_system_set_isr(csd_interrupt_IRQn,csd_interrupt_IRQn,CAPSENSE_INTERRUPT_PRIORITY, &capsense_isr);
     NVIC_ClearPendingIRQ(capSense_intr_config.intrSrc);
     NVIC_EnableIRQ(capSense_intr_config.intrSrc);
 

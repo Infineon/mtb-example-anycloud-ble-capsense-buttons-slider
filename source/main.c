@@ -1,20 +1,30 @@
-/*******************************************************************************
-* (c) 2020, Cypress Semiconductor Corporation. All rights reserved.
-********************************************************************************
-* This software, including source code, documentation and related materials
-* ("Software"), is owned by Cypress Semiconductor Corporation or one of its
-* subsidiaries ("Cypress") and is protected by and subject to worldwide patent
-* protection (United States and foreign), United States copyright laws and
-* international treaty provisions. Therefore, you may use this Software only
-* as provided in the license agreement accompanying the software package from
-* which you obtained this Software ("EULA").
+/******************************************************************************
+* File Name:   main.c
 *
+* Description: This is the source code for the AnyCloud: BLE Capsense Buttons
+*              Slider Example for ModusToolbox.
+*
+* Related Document: See README.md
+*
+*
+*******************************************************************************
+* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
+*
+* This software, including source code, documentation and related
+* materials ("Software") is owned by Cypress Semiconductor Corporation
+* or one of its affiliates ("Cypress") and is protected by and subject to
+* worldwide patent protection (United States and foreign),
+* United States copyright laws and international treaty provisions.
+* Therefore, you may use this Software only as provided in the license
+* agreement accompanying the software package from which you
+* obtained this Software ("EULA").
 * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
-* non-transferable license to copy, modify, and compile the Software source
-* code solely for use in connection with Cypress's integrated circuit products.
-* Any reproduction, modification, translation, compilation, or representation
-* of this Software except as specified above is prohibited without the express
-* written permission of Cypress.
+* non-transferable license to copy, modify, and compile the Software
+* source code solely for use in connection with Cypress's
+* integrated circuit products.  Any reproduction, modification, translation,
+* compilation, or representation of this Software except as specified
+* above is prohibited without the express written permission of Cypress.
 *
 * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
 * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
@@ -25,23 +35,11 @@
 * not authorize its products for use in any products where a malfunction or
 * failure of the Cypress product may reasonably be expected to result in
 * significant property damage, injury or death ("High Risk Product"). By
-* including Cypress's product in a High Risk Product, the manufacturer of such
-* system or application assumes all risk of such use and in doing so agrees to
-* indemnify Cypress against all liability.
+* including Cypress's product in a High Risk Product, the manufacturer
+* of such system or application assumes all risk of such use and in doing
+* so agrees to indemnify Cypress against all liability.
 *******************************************************************************/
 
-/*******************************************************************************
-* File Name: main.c
-*
-* Description: This is the source code for the AnyCloud: BLE Capsense Buttons
-*              Slider Example for ModusToolbox.
-*
-* Related Document: See README.md
-*
-*******************************************************************************/
-/*******************************************************************************
-*        Header Files
-*******************************************************************************/
 #include "cy_pdl.h"
 #include "cyhal.h"
 #include "cybsp.h"
@@ -53,10 +51,9 @@
 #include "led_task.h"
 #include "ble_task.h"
 
-
 /*******************************************************************************
-*        Macro Definitions
-*******************************************************************************/
+* Macros
+********************************************************************************/
 
 /* Priorities of user tasks in this project. configMAX_PRIORITIES is defined in
 * the FreeRTOSConfig.h and higher priority numbers denote high priority tasks.
@@ -66,7 +63,7 @@
 #define TASK_BLE_PRIORITY           (1u)
 
 /* Stack sizes of user tasks in this project */
-#define TASK_CAPSENSE_STACK_SIZE    (configMINIMAL_STACK_SIZE)
+#define TASK_CAPSENSE_STACK_SIZE    (2u*configMINIMAL_STACK_SIZE)
 #define TASK_LED_STACK_SIZE         (configMINIMAL_STACK_SIZE)
 #define TASK_BLE_STACK_SIZE         (4u*configMINIMAL_STACK_SIZE)
 
@@ -81,7 +78,7 @@
 volatile int uxTopUsedPriority;
 
 /******************************************************************************
- *                          Function Definitions
+ * Function Definitions
  ******************************************************************************/
 /*
  *  Entry point to the application with BSP initilization and Tasks creation.
@@ -113,7 +110,7 @@ int main(void)
     /* \x1b[2J\x1b[;H - ANSI ESC sequence to clear screen */
     printf("\x1b[2J\x1b[;H");
     printf("*****************AnyCloud Example******************\r\n");
-    printf("*****BLE Capsense Buttons & Slider Application*****\r\n");
+    printf("******Bluetooth LE CapSense Buttons & Slider*******\r\n");
     printf("***************************************************\r\n\r\n");
 
     /* Create the queues. See the respective data-types for details of queue
@@ -123,14 +120,14 @@ int main(void)
                                      sizeof(led_command_data_t));
     if(NULL == led_command_data_q)
     {
-        printf("Failed to create the Queue!\r\n");
+        printf("Failed to create the queue!\r\n");
         CY_ASSERT(0u);
     }
     capsense_command_q  = xQueueCreate(SINGLE_ELEMENT_QUEUE,
                                      sizeof(capsense_command_t));
     if(NULL == capsense_command_q)
     {
-        printf("Failed to create the Queue!\r\n");
+        printf("Failed to create the queue!\r\n");
         CY_ASSERT(0u);
     }
 
@@ -138,7 +135,7 @@ int main(void)
                                      sizeof(ble_capsense_data_t));
     if(NULL == ble_capsense_data_q)
     {
-        printf("Failed to create the Queue!\r\n");
+        printf("Failed to create the queue!\r\n");
         CY_ASSERT(0u);
     }
 
@@ -146,10 +143,11 @@ int main(void)
     * details of these tasks.
     */
 
-    if (pdPASS != xTaskCreate(task_capsense, "CapSense Task", TASK_CAPSENSE_STACK_SIZE,
+    if (pdPASS != xTaskCreate(task_capsense, "CapSense Task",
+                              TASK_CAPSENSE_STACK_SIZE,
                               NULL, TASK_CAPSENSE_PRIORITY, NULL))
     {
-        printf("Failed to create the CapSense task!\r\n");
+        printf("Failed to create the capsense task!\r\n");
         CY_ASSERT(0u);
     }
 
