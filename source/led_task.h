@@ -57,7 +57,11 @@
 #define LED_MAX_BRIGHTNESS  (100u)
 
 /* Allowed TCPWM compare value for minimum brightness*/
-#define LED_MIN_BRIGHTNESS  (1u)
+#define LED_MIN_BRIGHTNESS  (2u)
+
+/* Allowed TCPWM compare value for zero brightness*/
+#define LED_ZERO_BRIGHTNESS (0u)
+
 
 
 /*******************************************************************************

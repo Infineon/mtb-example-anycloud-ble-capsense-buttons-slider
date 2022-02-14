@@ -77,14 +77,16 @@ void task_led(void* param)
     bool led_on = true;
     BaseType_t rtos_api_result = pdFAIL;
     led_command_data_t led_cmd_data;
+    cy_rslt_t cy_result = CY_RSLT_SUCCESS;
 
     /* Suppress warning for unused parameter */
     (void)param;
 
     /* Configure the TCPWM for driving led */
-    if(CY_RSLT_SUCCESS != cyhal_pwm_init(&pwm_led, CYBSP_USER_LED, NULL))
+    cy_result = cyhal_pwm_init_adv(&pwm_led, CYBSP_USER_LED , NC, CYHAL_PWM_RIGHT_ALIGN, true, 0u, false, NULL);
+    if (CY_RSLT_SUCCESS != cy_result  )
     {
-        printf("CapSense interrupt initilization failed!");
+        printf("PWM initialization failed!\r\n");
     }
 
     if(CY_RSLT_SUCCESS != cyhal_pwm_set_duty_cycle(&pwm_led, GET_DUTY_CYCLE(LED_MAX_BRIGHTNESS),
@@ -116,11 +118,10 @@ void task_led(void* param)
                     if (!led_on)
                     {
                         /* Start PWM to turn the LED on */
-                        if(CY_RSLT_SUCCESS != cyhal_pwm_start(&pwm_led))
-                        {
-                           printf("PWM failed to start!");
-                        }
                         led_on = true;
+                        led_cmd_data.brightness = LED_MAX_BRIGHTNESS;
+                        cyhal_pwm_set_duty_cycle(&pwm_led, GET_DUTY_CYCLE(led_cmd_data.brightness),
+                                                                        PWM_LED_FREQ_HZ);
                     }
                     break;
                 }
@@ -130,33 +131,24 @@ void task_led(void* param)
                     if(led_on)
                     {
                         /* Stop PWM to turn the LED off */
-                        if(CY_RSLT_SUCCESS != cyhal_pwm_stop(&pwm_led))
-                        {
-                           printf("PWM failed to stop!");
-                        }
                         led_on = false;
+                        led_cmd_data.brightness = LED_ZERO_BRIGHTNESS;
+                        cyhal_pwm_set_duty_cycle(&pwm_led, GET_DUTY_CYCLE(led_cmd_data.brightness),
+                                                 PWM_LED_FREQ_HZ);
                     }
                     break;
                 }
                 /* Update LED brightness */
                 case LED_UPDATE_BRIGHTNESS:
                 {
-                    uint32_t brightness = (led_cmd_data.brightness < LED_MIN_BRIGHTNESS) ?
-                                            LED_MIN_BRIGHTNESS : led_cmd_data.brightness;
+                    if ((led_on) || ((!led_on) && (led_cmd_data.brightness>0)))
+                    {
+                        uint32_t brightness = (led_cmd_data.brightness < LED_MIN_BRIGHTNESS) ?
+                                               LED_MIN_BRIGHTNESS : led_cmd_data.brightness;
 
-                    /* Drive the LED with brightness */
-                    if(CY_RSLT_SUCCESS != cyhal_pwm_set_duty_cycle(&pwm_led, GET_DUTY_CYCLE(brightness),
-                                                PWM_LED_FREQ_HZ))
-                    {
-                        printf("PWM failed to set dutycycle!");
-                    }
-                    if (!led_on)
-                    {
-                        /* Start PWM to turn the LED on */
-                        if(CY_RSLT_SUCCESS != cyhal_pwm_start(&pwm_led))
-                        {
-                           printf("PWM failed to start!");
-                        }
+                        /* Drive the LED with brightness */
+                        cyhal_pwm_set_duty_cycle(&pwm_led, GET_DUTY_CYCLE(brightness),
+                                                 PWM_LED_FREQ_HZ);
                         led_on = true;
                     }
                     break;

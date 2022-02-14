@@ -1,4 +1,4 @@
-# AnyCloud: Bluetooth&reg; LE with CAPSENSE&trade; buttons and slider
+# Bluetooth&reg; LE with CAPSENSE&trade; buttons and slider
 
 This code example features a Bluetooth&reg; LE GATT Server with a 5-segment linear slider and two CAPSENSE&trade; buttons. Button 0 turns the LED ON, Button 1 turns the LED OFF, and the slider controls the brightness of the LED. The button status and slider data are sent to the GATT Client over GATT notification. This project uses the CAPSENSE&trade; middleware library; it is developed in the ModusToolbox&trade; software environment.
 
@@ -6,13 +6,13 @@ This code example uses FreeRTOS. visit the FreeRTOS website for documentation an
 
 [View this README on GitHub.](https://github.com/Infineon/mtb-example-anycloud-ble-capsense-buttons-slider)
 
-[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyMzAzMTciLCJTcGVjIE51bWJlciI6IjAwMi0zMDMxNyIsIkRvYyBUaXRsZSI6IkFueUNsb3VkOiBCbHVldG9vdGgmcmVnOyBMRSB3aXRoIENBUFNFTlNFJnRyYWRlOyBidXR0b25zIGFuZCBzbGlkZXIiLCJyaWQiOiJhc3JhIiwiRG9jIHZlcnNpb24iOiIzLjAuMCIsIkRvYyBMYW5ndWFnZSI6IkVuZ2xpc2giLCJEb2MgRGl2aXNpb24iOiJNQ0QiLCJEb2MgQlUiOiJJQ1ciLCJEb2MgRmFtaWx5IjoiUFNPQyJ9)
+[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyMzAzMTciLCJTcGVjIE51bWJlciI6IjAwMi0zMDMxNyIsIkRvYyBUaXRsZSI6IkJsdWV0b290aCZyZWc7IExFIHdpdGggQ0FQU0VOU0UmdHJhZGU7IGJ1dHRvbnMgYW5kIHNsaWRlciIsInJpZCI6ImFzcmEiLCJEb2MgdmVyc2lvbiI6IjQuMC4wIiwiRG9jIExhbmd1YWdlIjoiRW5nbGlzaCIsIkRvYyBEaXZpc2lvbiI6Ik1DRCIsIkRvYyBCVSI6IklDVyIsIkRvYyBGYW1pbHkiOiJQU09DIn0=)
 
 ## Requirements
 
-- [ModusToolbox™ software](https://www.cypress.com/products/modustoolbox-software-environment) 2.3 or later
+- [ModusToolbox&trade; software](https://www.cypress.com/products/modustoolbox-software-environment) v2.4
 - Programming language: C
-- Board support package (BSP) minimum required version: 2.0.0
+- Board support package (BSP) minimum required version: 3.0.0
 - Associated parts: All [PSoC&trade; 6 MCU](http://www.cypress.com/PSoC6) with [AIROC™ CYW43xxx Wi-Fi & Bluetooth® combo chips](https://www.cypress.com/products/airoc-wi-fi-combos)
 
 ## Supported toolchains (make variable 'TOOLCHAIN')
@@ -29,6 +29,7 @@ This code example uses FreeRTOS. visit the FreeRTOS website for documentation an
 - [PSoC&trade; 62S1 Wi-Fi Bluetooth&reg; pioneer kit](https://www.cypress.com/CYW9P62S1-43438EVB-01) (`CYW9P62S1-43438EVB-01`)
 - [PSoC&trade; 62S1 Wi-Fi Bluetooth&reg; pioneer kit](https://www.cypress.com/CYW9P62S1-43012EVB-01) (`CYW9P62S1-43012EVB-01`)
 - [PSoC&trade; 62S3 Wi-Fi Bluetooth&reg; prototyping kit](https://www.cypress.com/CY8CPROTO-062S3-4343W) (`CY8CPROTO-062S3-4343W`)
+- [PSoC&trade; 62S2 evaluation kit](https://www.cypress.com/CY8CEVAL-062S2) (`CY8CEVAL-062S2`, `CY8CEVAL-062S2-LAI-4373M2`, `CY8CEVAL-062S2-MUR-43439M2`)
 
 ## Hardware setup
 This example uses the board's default configuration. See the kit user guide to ensure that the board is configured correctly.
@@ -87,7 +88,7 @@ Argument | Description | Required/optional
 `--user-app-name`| Specify the name of the application if you prefer to have a name other than the example's default name | Optional
 
 
-The following example will clone the "[AnyCloud Bluetooth&reg; LE Capsense Buttons and Slider](https://github.com/Infineon/mtb-example-anycloud-ble-capsense-buttons-slider)" application with the desired name "mtb-example-anycloud-ble-capsense-buttons-slider" configured for the *CY8CKIT-062-WiFi-BT* BSP into the specified working directory, *C:/mtb_projects*:
+The following example will clone the "[Bluetooth&reg; LE Capsense Buttons and Slider](https://github.com/Infineon/mtb-example-anycloud-ble-capsense-buttons-slider)" application with the desired name "mtb-example-anycloud-ble-capsense-buttons-slider" configured for the *CY8CKIT-062-WiFi-BT* BSP into the specified working directory, *C:/mtb_projects*:
 
    ```
    project-creator-cli --board-id CY8CKIT-062-WiFi-BT --app-id mtb-example-anycloud-ble-capsense-buttons-slider --user-app-name mtb-example-anycloud-ble-capsense-buttons-slider --target-dir "C:/mtb_projects"
@@ -363,13 +364,14 @@ For PSoC&trade; 6 MCU devices, see [How to design with PSoC&trade; 6 MCU - KBA22
 For PSoC 6 MCU devices, see [How to design with PSoC 6 MCU - KBA223067](https://community.cypress.com/docs/DOC-14644) in the Cypress community.
 ## Document history
 
-Document title: *CE230317* – *AnyCloud: Bluetooth LE CapSense Buttons and Slider*
+Document title: *CE230317* – *Bluetooth LE CapSense Buttons and Slider*
 
 | Version | Description of change |
 | ------- | --------------------- |
 | 1.0.0   | New code example.      |
 | 2.0.0   | Major update to support ModusToolbox&trade; software v2.2; added support for new kits.<br /> This version is not backward compatible with ModusToolbox&trade; software v2.1.  |
 | 3.0.0   | Updated to support ModusToolbox&trade; software v2.3 and and it is not backward compatible with v2.2 and earlier|
+| 4.0.0   | Added support for 43439 kit <br /> Updated BSP to 3.0.0|
 ------
 
 

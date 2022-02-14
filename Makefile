@@ -40,7 +40,7 @@ TARGET=CY8CPROTO-062-4343W
 # 
 # If APPNAME is edited, ensure to update or regenerate launch 
 # configurations for your IDE.
-APPNAME=mtb-example-anycloud-ble-capsense-buttons-and-slider
+APPNAME=mtb-example-anycloud-ble-capsense-buttons-slider
 
 # Name of toolchain to use. Options include:
 #

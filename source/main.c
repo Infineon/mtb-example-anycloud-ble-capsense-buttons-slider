@@ -1,14 +1,14 @@
 /******************************************************************************
 * File Name:   main.c
 *
-* Description: This is the source code for the AnyCloud: BLE Capsense Buttons
+* Description: This is the source code for the : Bluetooth LE Capsense Buttons
 *              Slider Example for ModusToolbox.
 *
 * Related Document: See README.md
 *
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -109,7 +109,6 @@ int main(void)
     }
     /* \x1b[2J\x1b[;H - ANSI ESC sequence to clear screen */
     printf("\x1b[2J\x1b[;H");
-    printf("*****************AnyCloud Example******************\r\n");
     printf("******Bluetooth LE CapSense Buttons & Slider*******\r\n");
     printf("***************************************************\r\n\r\n");
 
