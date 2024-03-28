@@ -1,20 +1,21 @@
 /*******************************************************************************
-* (c) 2020, Cypress Semiconductor Corporation. All rights reserved.
-*******************************************************************************
-* This software, including source code, documentation and related materials
-* ("Software"), is owned by Cypress Semiconductor Corporation or one of its
-* subsidiaries ("Cypress") and is protected by and subject to worldwide patent
-* protection (United States and foreign), United States copyright laws and
-* international treaty provisions. Therefore, you may use this Software only
-* as provided in the license agreement accompanying the software package from
-* which you obtained this Software ("EULA").
+* Copyright 2020-2023, Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
+* This software, including source code, documentation and related
+* materials ("Software") is owned by Cypress Semiconductor Corporation
+* or one of its affiliates ("Cypress") and is protected by and subject to
+* worldwide patent protection (United States and foreign),
+* United States copyright laws and international treaty provisions.
+* Therefore, you may use this Software only as provided in the license
+* agreement accompanying the software package from which you
+* obtained this Software ("EULA").
 * If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
-* non-transferable license to copy, modify, and compile the Software source
-* code solely for use in connection with Cypress's integrated circuit products.
-* Any reproduction, modification, translation, compilation, or representation
-* of this Software except as specified above is prohibited without the express
-* written permission of Cypress.
+* non-transferable license to copy, modify, and compile the Software
+* source code solely for use in connection with Cypress's
+* integrated circuit products.  Any reproduction, modification, translation,
+* compilation, or representation of this Software except as specified
+* above is prohibited without the express written permission of Cypress.
 *
 * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
 * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
@@ -25,9 +26,9 @@
 * not authorize its products for use in any products where a malfunction or
 * failure of the Cypress product may reasonably be expected to result in
 * significant property damage, injury or death ("High Risk Product"). By
-* including Cypress's product in a High Risk Product, the manufacturer of such
-* system or application assumes all risk of such use and in doing so agrees to
-* indemnify Cypress against all liability.
+* including Cypress's product in a High Risk Product, the manufacturer
+* of such system or application assumes all risk of such use and in doing
+* so agrees to indemnify Cypress against all liability.
 *******************************************************************************/
 
 #ifndef FREERTOS_CONFIG_H
@@ -55,6 +56,8 @@
  */
 #include "cycfg_system.h"
 
+
+
 #define configUSE_PREEMPTION                    1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION 0
 #define configCPU_CLOCK_HZ                      SystemCoreClock
@@ -70,14 +73,14 @@
 #define configUSE_COUNTING_SEMAPHORES           1
 #define configQUEUE_REGISTRY_SIZE               10
 #define configUSE_QUEUE_SETS                    0
-#define configUSE_TIME_SLICING                  0
+#define configUSE_TIME_SLICING                  1
 #define configENABLE_BACKWARD_COMPATIBILITY     0
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS 5
 
 /* Memory allocation related definitions. */
 #define configSUPPORT_STATIC_ALLOCATION         1
 #define configSUPPORT_DYNAMIC_ALLOCATION        1
-#define configTOTAL_HEAP_SIZE                   ( ( size_t ) ( CY_SRAM_SIZE - 64 * 1024))
+#define configTOTAL_HEAP_SIZE                   10240
 #define configAPPLICATION_ALLOCATED_HEAP        0
 
 /* Hook function related definitions. */
@@ -101,51 +104,6 @@
 #define configTIMER_TASK_PRIORITY               3
 #define configTIMER_QUEUE_LENGTH                10
 #define configTIMER_TASK_STACK_DEPTH            configMINIMAL_STACK_SIZE
-
-/*
-Interrupt nesting behavior configuration.
-This is explained here: http://www.freertos.org/a00110.html
-
-Priorities are controlled by two macros:
-- configKERNEL_INTERRUPT_PRIORITY determines the priority of the RTOS daemon task
-- configMAX_API_CALL_INTERRUPT_PRIORITY dictates the priority of ISRs that make API calls
-
-Notes:
-1. Interrupts that do not call API functions should be >= configKERNEL_INTERRUPT_PRIORITY
-   and will nest.
-2. Interrupts that call API functions must have priority between KERNEL_INTERRUPT_PRIORITY
-   and MAX_API_CALL_INTERRUPT_PRIORITY (inclusive).
-3. Interrupts running above MAX_API_CALL_INTERRUPT_PRIORITY are never delayed by the OS.
-*/
-/*
-PSoC 6 __NVIC_PRIO_BITS = 3
-
-0 (high)
-1           MAX_API_CALL_INTERRUPT_PRIORITY 001xxxxx (0x3F)
-2
-3
-4
-5
-6
-7 (low)     KERNEL_INTERRUPT_PRIORITY       111xxxxx (0xFF)
-
-!!!! configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to zero !!!!
-See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html
-
-*/
-
-/* Put KERNEL_INTERRUPT_PRIORITY in top __NVIC_PRIO_BITS bits of CM4 register */
-#define configKERNEL_INTERRUPT_PRIORITY         0xFF
-/*
-Put MAX_SYSCALL_INTERRUPT_PRIORITY in top __NVIC_PRIO_BITS bits of CM4 register
-NOTE For IAR compiler make sure that changes of this macro is reflected in
-file portable\TOOLCHAIN_IAR\COMPONENT_CM4\portasm.s in PendSV_Handler: routine
-*/
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY    0x3F
-/* configMAX_API_CALL_INTERRUPT_PRIORITY is a new name for configMAX_SYSCALL_INTERRUPT_PRIORITY
- that is used by newer ports only. The two are equivalent. */
-#define configMAX_API_CALL_INTERRUPT_PRIORITY   configMAX_SYSCALL_INTERRUPT_PRIORITY
-
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
@@ -182,14 +140,14 @@ standard names - or at least those used in the unmodified vector table. */
 #define xPortSysTickHandler SysTick_Handler
 
 /* Dynamic Memory Allocation Schemes */
-#define HEAP_ALLOCATION_TYPE1                       (1)     /* heap_1.c*/
-#define HEAP_ALLOCATION_TYPE2                       (2)     /* heap_2.c*/
-#define HEAP_ALLOCATION_TYPE3                       (3)     /* heap_3.c*/
-#define HEAP_ALLOCATION_TYPE4                       (4)     /* heap_4.c*/
-#define HEAP_ALLOCATION_TYPE5                       (5)     /* heap_5.c*/
-#define NO_HEAP_ALLOCATION                          (0)
+#define HEAP_ALLOCATION_TYPE1                   (1)     /* heap_1.c*/
+#define HEAP_ALLOCATION_TYPE2                   (2)     /* heap_2.c*/
+#define HEAP_ALLOCATION_TYPE3                   (3)     /* heap_3.c*/
+#define HEAP_ALLOCATION_TYPE4                   (4)     /* heap_4.c*/
+#define HEAP_ALLOCATION_TYPE5                   (5)     /* heap_5.c*/
+#define NO_HEAP_ALLOCATION                      (0)
 
-#define configHEAP_ALLOCATION_SCHEME                (HEAP_ALLOCATION_TYPE3)
+#define configHEAP_ALLOCATION_SCHEME            (HEAP_ALLOCATION_TYPE3)
 
 /* Check if the ModusToolbox Device Configurator Power personality parameter
  * "System Idle Power Mode" is set to either "CPU Sleep" or "System Deep Sleep".
@@ -231,4 +189,5 @@ extern void vApplicationSleep( uint32_t xExpectedIdleTime );
  * The compatible implementations are also provided by the clib-support library.
  */
 #define configUSE_NEWLIB_REENTRANT              1
+
 #endif /* FREERTOS_CONFIG_H */

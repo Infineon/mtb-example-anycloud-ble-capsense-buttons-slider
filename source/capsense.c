@@ -1,27 +1,28 @@
 /*******************************************************************************
-* File Name: capsense_task.c
+* File Name: capsense.c
 *
 * Description: This file contains the task that handles touch sensing.
 *
 * Related Document: README.md
 *
 ********************************************************************************
-* (c) 2019-2020, Cypress Semiconductor Corporation. All rights reserved.
-********************************************************************************
-* This software, including source code, documentation and related materials
-* (“Software”), is owned by Cypress Semiconductor Corporation or one of its
-* subsidiaries (“Cypress”) and is protected by and subject to worldwide patent
-* protection (United States and foreign), United States copyright laws and
-* international treaty provisions. Therefore, you may use this Software only
-* as provided in the license agreement accompanying the software package from
-* which you obtained this Software (“EULA”).
+* Copyright 2021-2024, Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
-* If no EULA applies, Cypress hereby grants you a personal, nonexclusive,
-* non-transferable license to copy, modify, and compile the Software source
-* code solely for use in connection with Cypress’s integrated circuit products.
-* Any reproduction, modification, translation, compilation, or representation
-* of this Software except as specified above is prohibited without the express
-* written permission of Cypress.
+* This software, including source code, documentation and related
+* materials ("Software") is owned by Cypress Semiconductor Corporation
+* or one of its affiliates ("Cypress") and is protected by and subject to
+* worldwide patent protection (United States and foreign),
+* United States copyright laws and international treaty provisions.
+* Therefore, you may use this Software only as provided in the license
+* agreement accompanying the software package from which you
+* obtained this Software ("EULA").
+* If no EULA applies, Cypress hereby grants you a personal, non-exclusive,
+* non-transferable license to copy, modify, and compile the Software
+* source code solely for use in connection with Cypress's
+* integrated circuit products.  Any reproduction, modification, translation,
+* compilation, or representation of this Software except as specified
+* above is prohibited without the express written permission of Cypress.
 *
 * Disclaimer: THIS SOFTWARE IS PROVIDED AS-IS, WITH NO WARRANTY OF ANY KIND,
 * EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, NONINFRINGEMENT, IMPLIED
@@ -31,57 +32,51 @@
 * Software or any product or circuit described in the Software. Cypress does
 * not authorize its products for use in any products where a malfunction or
 * failure of the Cypress product may reasonably be expected to result in
-* significant property damage, injury or death (“High Risk Product”). By
-* including Cypress’s product in a High Risk Product, the manufacturer of such
-* system or application assumes all risk of such use and in doing so agrees to
-* indemnify Cypress against all liability.
-*****************************************​**************************************/
+* significant property damage, injury or death ("High Risk Product"). By
+* including Cypress's product in a High Risk Product, the manufacturer
+* of such system or application assumes all risk of such use and in doing
+* so agrees to indemnify Cypress against all liability.
+*******************************************************************************/
 
 /*******************************************************************************
 * Header files includes
 *******************************************************************************/
-
 #include "cybsp.h"
 #include "cyhal.h"
 #include "cycfg.h"
+#include "cy_retarget_io.h"
 #include "cycfg_capsense.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 #include "timers.h"
-#include "led_task.h"
-#include "ble_task.h"
-#include "capsense_task.h"
-#include "cy_retarget_io.h"
+#include "board.h"
+#include "capsense.h"
+#include "bt_app.h"
+
 
 /*******************************************************************************
-* Global constants
+* Macros
 *******************************************************************************/
-#define CAPSENSE_INTERRUPT_PRIORITY    (7u)
-#define EZI2C_INTERRUPT_PRIORITY    (6u)    /* EZI2C interrupt priority must be
+#define CAPSENSE_INTERRUPT_PRIORITY     (7u)
+
+#define EZI2C_INTERRUPT_PRIORITY        (6u)    /* EZI2C interrupt priority must be
                                              * higher than CapSense interrupt
                                              */
-#define CAPSENSE_SCAN_INTERVAL_MS   (10u)   /* in milliseconds*/
+#define CAPSENSE_SCAN_INTERVAL_MS       (10u)   /* in milliseconds*/
 
-#define CAPSENSE_BUTTON_COUNT       (2u)
-
-/*******************************************************************************
-* Function Prototypes
-*******************************************************************************/
-static cy_status capsense_init(void);
-static void tuner_init(void);
-static void process_touch(void);
-static void capsense_isr(void);
-static void capsense_end_of_scan_callback(cy_stc_active_scan_sns_t* active_scan_sns_ptr);
-static void capsense_timer_callback(TimerHandle_t xTimer);
-void handle_error(void);
+#define CAPSENSE_BUTTON_COUNT           (2u)
 
 
 /*******************************************************************************
-* Global variables
+* Global Variables
 *******************************************************************************/
 QueueHandle_t capsense_command_q;
 TimerHandle_t scan_timer_handle;
+
+/* Variables used for storing slider data */
+capsense_data_t capsense_data = {0};
+
 cy_stc_scb_ezi2c_context_t ezi2c_context;
 cyhal_ezi2c_t sEzI2C;
 cyhal_ezi2c_slave_cfg_t sEzI2C_sub_cfg;
@@ -103,30 +98,25 @@ cy_stc_syspm_callback_t capsense_deep_sleep_cb =
     NULL,
     NULL
 };
+
+
 /*******************************************************************************
-* Function Name: handle_error
-********************************************************************************
-* Summary:
-* User defined error handling function
-*
-* Parameters:
-*  void
-*
-* Return:
-*  void
-*
+* Function Prototypes
 *******************************************************************************/
-void handle_error(void)
-{
-    /* Disable all interrupts. */
-    __disable_irq();
-
-    CY_ASSERT(0);
-}
+static cy_status capsense_init(void);
+static void capsense_tuner_init(void);
+static void capsense_process(void);
+static void capsense_isr(void);
+static void capsense_end_of_scan_callback(cy_stc_active_scan_sns_t* active_scan_sns_ptr);
+static void capsense_timer_callback(TimerHandle_t xTimer);
 
 
 /*******************************************************************************
-* Function Name: task_capsense
+* Function Definitions
+*******************************************************************************/
+
+/*******************************************************************************
+* Function Name: capsense_task
 ********************************************************************************
 * Summary:
 *  Task that initializes the CapSense block and processes the touch input.
@@ -134,11 +124,14 @@ void handle_error(void)
 * Parameters:
 *  void *param : Task parameter defined during task creation (unused)
 *
+* Return:
+*   None
+*
 *******************************************************************************/
-void task_capsense(void* param)
+void capsense_task(void* param)
 {
     BaseType_t rtos_api_result = pdFAIL;
-    cy_status status;
+    cy_status status = CY_RSLT_SUCCESS;
     capsense_command_t capsense_cmd;
 
     /* Remove warning for unused parameter */
@@ -150,18 +143,19 @@ void task_capsense(void* param)
 
     if(NULL == scan_timer_handle)
     {
-        printf("CapSense scan timer initilization failed!\r\n");
+        printf("CapSense scan timer initialization failed!\r\n");
         CY_ASSERT(0u);
     }
 
     /* Setup communication between Tuner GUI and PSoC 6 MCU */
-    tuner_init();
+    capsense_tuner_init();
 
     /* Initialize CapSense block */
     status = capsense_init();
-    if(CY_RET_SUCCESS != status)
+
+    if(CY_RSLT_SUCCESS != status)
     {
-        printf("CapSense initilization failed!\r\n");
+        printf("CapSense initialization failed!\r\n");
         CY_ASSERT(0u);
     }
 
@@ -169,7 +163,7 @@ void task_capsense(void* param)
     rtos_api_result = xTimerStart(scan_timer_handle, 0u);
     if(pdFAIL == rtos_api_result)
     {
-        printf("Faild to start capsense scan timer!\r\n");
+        printf("Failed to start CapSense scan timer!\r\n");
         CY_ASSERT(0u);
     }
 
@@ -178,7 +172,7 @@ void task_capsense(void* param)
     {
         /* Block until a CapSense command has been received over queue */
         rtos_api_result = xQueueReceive(capsense_command_q, &capsense_cmd,
-                portMAX_DELAY);
+                                                            portMAX_DELAY);
 
         /* Command has been received from capsense_cmd */
         if(pdTRUE == rtos_api_result)
@@ -191,7 +185,7 @@ void task_capsense(void* param)
                     case CAPSENSE_SCAN:
                     {
                         /* Start scan */
-                        if(CY_RET_SUCCESS != Cy_CapSense_ScanAllWidgets(&cy_capsense_context))
+                        if(CY_RSLT_SUCCESS != Cy_CapSense_ScanAllWidgets(&cy_capsense_context))
                         {
                             printf("CapSense scanning failed!\r\n");
                         }
@@ -200,9 +194,9 @@ void task_capsense(void* param)
                     case CAPSENSE_PROCESS:
                     {
                         /* Process all widgets */
-                        if(CY_RET_SUCCESS == Cy_CapSense_ProcessAllWidgets(&cy_capsense_context))
+                        if(CY_RSLT_SUCCESS == Cy_CapSense_ProcessAllWidgets(&cy_capsense_context))
                         {
-                            process_touch();
+                            capsense_process();
                         }
                         else
                         {
@@ -229,13 +223,19 @@ void task_capsense(void* param)
 
 
 /*******************************************************************************
-* Function Name: process_touch
+* Function Name: capsense_process
 ********************************************************************************
 * Summary:
-*  This function processes the touch input and sends command to LED task.
+*  This function processes the CapSense touch input and sends set the commands.
+* 
+* Parameters:
+*  None
+*
+* Return:
+*  None
 *
 *******************************************************************************/
-static void process_touch(void)
+static void capsense_process(void)
 {
     /* Variables used to store touch information */
     uint32_t button0_status = 0;
@@ -250,16 +250,14 @@ static void process_touch(void)
     static uint32_t button1_status_prev = 0;
     static uint16_t slider_pos_perv = 0;
 
-    /* Variables used for storing slider data */
-    static ble_capsense_data_t ble_capsense_data = {0};
     /* Variables used for storing command and data for LED Task */
     led_command_data_t led_cmd_data;
     bool send_led_command = false;
 
 
-    bool send_ble_command = false;
+    bool send_bt_command = false;
      /* Total capsense button in the kit */
-    ble_capsense_data.buttoncount = CAPSENSE_BUTTON_COUNT;
+    capsense_data.buttoncount = CAPSENSE_BUTTON_COUNT;
 
     /* Get Button0 status */
     button0_status = Cy_CapSense_IsSensorActive(
@@ -285,8 +283,8 @@ static void process_touch(void)
     {
         led_cmd_data.command = LED_TURN_ON;
         send_led_command = true;
-        ble_capsense_data.buttonstatus1 = 1u;
-        send_ble_command = true;
+        capsense_data.buttonstatus1 = 1u;
+        send_bt_command = true;
     }
 
     /* Detect new touch on Button1 */
@@ -294,8 +292,8 @@ static void process_touch(void)
     {
         led_cmd_data.command = LED_TURN_OFF;
         send_led_command = true;
-        ble_capsense_data.buttonstatus1 = 2u;
-        send_ble_command = true;
+        capsense_data.buttonstatus1 = 2u;
+        send_bt_command = true;
     }
     /* Detect new touch on slider */
     if((0u != slider_touched) && (slider_pos_perv != slider_pos ))
@@ -303,14 +301,13 @@ static void process_touch(void)
         /* Slider value in percentage */
         slider_value = (slider_pos * 100) /
         cy_capsense_context.ptrWdConfig[CY_CAPSENSE_LINEARSLIDER0_WDGT_ID].xResolution;
-        led_cmd_data.command = LED_UPDATE_BRIGHTNESS;
+        led_cmd_data.command = LED_SET_BRIGHTNESS;
         /* Setting brightness value */
         led_cmd_data.brightness = slider_value;
         send_led_command = true;
-
         /* Setting ble app data value */
-        ble_capsense_data.sliderdata = slider_value;
-        send_ble_command = true;
+        capsense_data.sliderdata = slider_value;
+        send_bt_command = true;
 
     }
 
@@ -320,10 +317,9 @@ static void process_touch(void)
         xQueueSendToBack(led_command_data_q, &led_cmd_data, 0u);
     }
 
-    /* Send command to update LED state if required */
-    if(send_ble_command)
+    if(send_bt_command)
     {
-        xQueueSendToBack(ble_capsense_data_q, &ble_capsense_data, 0u);
+        xTaskNotify(bt_task_handle, 1, eSetValueWithoutOverwrite);
     }
 
     /* Update previous touch status */
@@ -340,10 +336,15 @@ static void process_touch(void)
 *  This function initializes the CSD HW block, and configures the CapSense
 *  interrupt.
 *
+* Parameters:
+*  None
+*
+* Return:
+*   cy_rslt_t  Result status
 *******************************************************************************/
 static cy_status capsense_init(void)
 {
-    cy_status status;
+    cy_status status = CY_RSLT_SUCCESS;
 
     /* CapSense interrupt configuration parameters */
     static const cy_stc_sysint_t capSense_intr_config =
@@ -354,13 +355,14 @@ static cy_status capsense_init(void)
 
     /*Initialize CapSense Data structures */
     status = Cy_CapSense_Init(&cy_capsense_context);
-    if (CYRET_SUCCESS != status)
+    if (CY_RSLT_SUCCESS != status)
     {
         return status;
     }
 
     /* Initialize CapSense interrupt */
-    cyhal_system_set_isr(csd_interrupt_IRQn,csd_interrupt_IRQn,CAPSENSE_INTERRUPT_PRIORITY, &capsense_isr);
+    cyhal_system_set_isr(csd_interrupt_IRQn,csd_interrupt_IRQn,
+                                    CAPSENSE_INTERRUPT_PRIORITY, &capsense_isr);
     NVIC_ClearPendingIRQ(capSense_intr_config.intrSrc);
     NVIC_EnableIRQ(capSense_intr_config.intrSrc);
 
@@ -370,13 +372,13 @@ static cy_status capsense_init(void)
     /* Register end of scan callback */
     status = Cy_CapSense_RegisterCallback(CY_CAPSENSE_END_OF_SCAN_E,
                                               capsense_end_of_scan_callback, &cy_capsense_context);
-    if (CYRET_SUCCESS != status)
+    if (CY_RSLT_SUCCESS != status)
     {
         return status;
     }
     /* Initialize the CapSense firmware modules. */
     status = Cy_CapSense_Enable(&cy_capsense_context);
-    if (CYRET_SUCCESS != status)
+    if (CY_RSLT_SUCCESS != status)
     {
         return status;
     }
@@ -394,6 +396,9 @@ static cy_status capsense_init(void)
 *
 * Parameters:
 *  cy_stc_active_scan_sns_t * active_scan_sns_ptr (unused)
+*
+* Return:
+*   None
 *
 *******************************************************************************/
 static void capsense_end_of_scan_callback(cy_stc_active_scan_sns_t* active_scan_sns_ptr)
@@ -419,6 +424,9 @@ static void capsense_end_of_scan_callback(cy_stc_active_scan_sns_t* active_scan_
 * Parameters:
 *  TimerHandle_t xTimer (unused)
 *
+* Return:
+*   None
+*
 *******************************************************************************/
 static void capsense_timer_callback(TimerHandle_t xTimer)
 {
@@ -440,6 +448,12 @@ static void capsense_timer_callback(TimerHandle_t xTimer)
 * Summary:
 *  Wrapper function for handling interrupts from CSD block.
 *
+* Parameters:
+*  None
+*
+* Return:
+*   None
+*
 *******************************************************************************/
 static void capsense_isr(void)
 {
@@ -448,16 +462,23 @@ static void capsense_isr(void)
 
 
 /*******************************************************************************
-* Function Name: tuner_init
+* Function Name: capsense_tuner_init
 ********************************************************************************
 * Summary:
 *  Initializes communication between Tuner GUI and PSoC 6 MCU.
 *
+* Parameters:
+*  None
+*
+* Return:
+*   None
+*
 *******************************************************************************/
-static void tuner_init(void)
+static void capsense_tuner_init(void)
 {
-    cy_rslt_t result;
-    /* Configure Capsense Tuner as EzI2C Slave */
+    cy_rslt_t result = CY_RSLT_SUCCESS;
+
+    /* Configure CapSense Tuner as EzI2C Slave */
     sEzI2C_sub_cfg.buf = (uint8 *)&cy_capsense_tuner;
     sEzI2C_sub_cfg.buf_rw_boundary = sizeof(cy_capsense_tuner);
     sEzI2C_sub_cfg.buf_size = sizeof(cy_capsense_tuner);
@@ -471,8 +492,8 @@ static void tuner_init(void)
     result = cyhal_ezi2c_init( &sEzI2C, CYBSP_I2C_SDA, CYBSP_I2C_SCL, NULL, &sEzI2C_cfg);
     if (result != CY_RSLT_SUCCESS)
     {
-        printf("Tuner initilization failed!");
-        handle_error();
+        printf("CapSense tuner initialization failed!\r\n");
+        CY_ASSERT(0u);
     }
 
 }

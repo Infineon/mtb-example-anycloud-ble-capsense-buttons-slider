@@ -7,8 +7,8 @@
 * Related Document: See README.md
 *
 *
-*******************************************************************************
-* Copyright 2021-2023, Cypress Semiconductor Corporation (an Infineon company) or
+********************************************************************************
+* Copyright 2021-2024, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -39,78 +39,107 @@
 * of such system or application assumes all risk of such use and in doing
 * so agrees to indemnify Cypress against all liability.
 *******************************************************************************/
-
-#include "cy_pdl.h"
-#include "cyhal.h"
+/*******************************************************************************
+* Header Files
+*******************************************************************************/
 #include "cybsp.h"
 #include "cy_retarget_io.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include <FreeRTOS.h>
+#include <task.h>
 #include "queue.h"
-#include "capsense_task.h"
-#include "led_task.h"
-#include "ble_task.h"
+#include "wiced_bt_stack.h"
+#include "cybsp_bt_config.h"
+#include "cycfg_bt_settings.h"
+#include "cybt_platform_config.h"
+#include "board.h"
+#include "bt_app.h"
+#include "capsense.h"
+
 
 /*******************************************************************************
 * Macros
-********************************************************************************/
+*******************************************************************************/
+/* Task parameters for Bluetooth Task. */
+#define BT_TASK_PRIORITY                            (2u)
+#define BT_TASK_STACK_SIZE                          (512u)
 
-/* Priorities of user tasks in this project. configMAX_PRIORITIES is defined in
-* the FreeRTOSConfig.h and higher priority numbers denote high priority tasks.
-*/
-#define TASK_CAPSENSE_PRIORITY      (1u)
-#define TASK_LED_PRIORITY           (1u)
-#define TASK_BLE_PRIORITY           (1u)
-
-/* Stack sizes of user tasks in this project */
-#define TASK_CAPSENSE_STACK_SIZE    (2u*configMINIMAL_STACK_SIZE)
-#define TASK_LED_STACK_SIZE         (configMINIMAL_STACK_SIZE)
-#define TASK_BLE_STACK_SIZE         (4u*configMINIMAL_STACK_SIZE)
+/* Task parameters for CapSense Task. */
+#define CAPSENSE_TASK_PRIORITY                      (2u)
+#define CAPSENSE_TASK_STACK_SIZE                    (256u)
 
 /* Queue lengths of message queues used in this project */
-#define SINGLE_ELEMENT_QUEUE        (1u)
+#define SINGLE_ELEMENT_QUEUE                        (1u)
 
 
-/******************************************************************************
+/*******************************************************************************
 * Global Variables
-******************************************************************************/
-/* This enables RTOS aware debugging. */
-volatile int uxTopUsedPriority;
+*******************************************************************************/
+/* FreeRTOS task handle for board task. Button task is used to handle button
+ * events */
+TaskHandle_t  bt_task_handle;
 
-/******************************************************************************
- * Function Definitions
- ******************************************************************************/
-/*
- *  Entry point to the application with BSP initilization and Tasks creation.
- */
-int main(void)
+
+/*******************************************************************************
+* Function Definitions
+*******************************************************************************/
+
+/*******************************************************************************
+* Function Name : main
+* ******************************************************************************
+* Summary :
+*   Entry point to the application. Set device configuration and start BT
+*  freeRTOS tasks and initialization.
+*
+* Parameters:
+*    None
+*
+* Return:
+*    None
+*******************************************************************************/
+int main()
 {
-    cy_rslt_t result = CY_RSLT_SUCCESS;
-
-    /* This enables RTOS aware debugging in OpenOCD. */
-    uxTopUsedPriority = configMAX_PRIORITIES - 1;
+    cy_rslt_t cy_result = CY_RSLT_SUCCESS;
+    wiced_result_t result = WICED_BT_SUCCESS;
 
     /* Initialize the board support package */
-    result = cybsp_init();
-    if (CY_RSLT_SUCCESS != result)
+    cy_result = cybsp_init();
+
+    if (CY_RSLT_SUCCESS != cy_result)
     {
         CY_ASSERT(0u);
     }
 
-    /* Enable global interrupts */
-    __enable_irq();
+    /* Initialize the board components */
+    cy_result = board_init();
 
-    /* Initialize retarget-io to use the debug UART port */
-    result = cy_retarget_io_init( CYBSP_DEBUG_UART_TX, CYBSP_DEBUG_UART_RX,
-                                     CY_RETARGET_IO_BAUDRATE);
-    if (CY_RSLT_SUCCESS != result)
+    if( CY_RSLT_SUCCESS != cy_result)
     {
+        printf("Board initialization failed!\r\n");
         CY_ASSERT(0u);
     }
+
     /* \x1b[2J\x1b[;H - ANSI ESC sequence to clear screen */
     printf("\x1b[2J\x1b[;H");
-    printf("******Bluetooth LE CapSense Buttons & Slider*******\r\n");
-    printf("***************************************************\r\n\r\n");
+    printf("==============================================\r\n");
+    printf("Bluetooth LE CapSense Buttons & Slider\r\n");
+    printf("===============================================\r\n\n");
+
+    /* Configure platform specific settings for the BT device */
+    cybt_platform_config_init(&cybsp_bt_platform_cfg);
+
+    /* Register call back and configuration with stack */
+    result = wiced_bt_stack_init(bt_app_management_cb, &wiced_bt_cfg_settings);
+
+    /* Check if stack initialization was successful */
+    if( CY_RSLT_SUCCESS == result)
+    {
+        printf("Bluetooth stack initialization successful!\r\n");
+    }
+    else
+    {
+        printf("Bluetooth stack initialization failed!\r\n");
+        CY_ASSERT(0u);
+    }
 
     /* Create the queues. See the respective data-types for details of queue
     * contents
@@ -130,48 +159,28 @@ int main(void)
         CY_ASSERT(0u);
     }
 
-    ble_capsense_data_q  = xQueueCreate(SINGLE_ELEMENT_QUEUE,
-                                     sizeof(ble_capsense_data_t));
-    if(NULL == ble_capsense_data_q)
+    /* Create the BT task */
+    if (pdPASS != xTaskCreate(bt_task, "BT Task", BT_TASK_STACK_SIZE,
+                                                NULL, BT_TASK_PRIORITY, &bt_task_handle))
     {
-        printf("Failed to create the queue!\r\n");
+        printf("Failed to create the BT task!\r\n");
         CY_ASSERT(0u);
     }
 
-    /* Create the user tasks. See the respective task definition for more
-    * details of these tasks.
-    */
-
-    if (pdPASS != xTaskCreate(task_capsense, "CapSense Task",
-                              TASK_CAPSENSE_STACK_SIZE,
-                              NULL, TASK_CAPSENSE_PRIORITY, NULL))
+    /* Create the CapSense task */
+    if (pdPASS != xTaskCreate(capsense_task, "CapSense Task", CAPSENSE_TASK_STACK_SIZE,
+                                                NULL, CAPSENSE_TASK_PRIORITY, NULL))
     {
-        printf("Failed to create the capsense task!\r\n");
+        printf("Failed to create the CapSense task!\r\n");
         CY_ASSERT(0u);
     }
 
-    if (pdPASS != xTaskCreate(task_led, "Led Task", TASK_LED_STACK_SIZE,
-                              NULL, TASK_LED_PRIORITY, NULL))
-    {
-        printf("Failed to create the LED task!\r\n");
-        CY_ASSERT(0u);
-    }
-
-    if (pdPASS != xTaskCreate(task_ble, "Ble Task", TASK_BLE_STACK_SIZE,
-                              NULL, TASK_BLE_PRIORITY, NULL))
-    {
-        printf("Failed to create the BLE task!\r\n");
-        CY_ASSERT(0u);
-    }
-
-    /* Start the RTOS scheduler. This function should never return */
+    /* Start the FreeRTOS scheduler */
     vTaskStartScheduler();
 
-    /*~~~~~~~~~~~~~~~~~~~~~ Should never get here! ~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    /* RTOS scheduler exited */
-    /* Halt the CPU if scheduler exits */
-    CY_ASSERT(0u);
-
+    /* Should never get here */
+    CY_ASSERT(0u) ;
 }
 
-/* [] END OF FILE */
+
+/* END OF FILE [] */
