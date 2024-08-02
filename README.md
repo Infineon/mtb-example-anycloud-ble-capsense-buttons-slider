@@ -6,7 +6,7 @@ This code example uses FreeRTOS. visit the FreeRTOS website for documentation an
 
 [View this README on GitHub.](https://github.com/Infineon/mtb-example-btstack-freertos-capsense-buttons-slider)
 
-[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyMzAzMTciLCJTcGVjIE51bWJlciI6IjAwMi0zMDMxNyIsIkRvYyBUaXRsZSI6IkJsdWV0b290aCZyZWc7IExFIHdpdGggQ0FQU0VOU0UmdHJhZGU7IGJ1dHRvbnMgYW5kIHNsaWRlciIsInJpZCI6ImFzcmEiLCJEb2MgdmVyc2lvbiI6IjYuMC4wIiwiRG9jIExhbmd1YWdlIjoiRW5nbGlzaCIsIkRvYyBEaXZpc2lvbiI6Ik1DRCIsIkRvYyBCVSI6IklDVyIsIkRvYyBGYW1pbHkiOiJQU09DIn0=)
+[Provide feedback on this code example.](https://cypress.co1.qualtrics.com/jfe/form/SV_1NTns53sK2yiljn?Q_EED=eyJVbmlxdWUgRG9jIElkIjoiQ0UyMzAzMTciLCJTcGVjIE51bWJlciI6IjAwMi0zMDMxNyIsIkRvYyBUaXRsZSI6IkJsdWV0b290aCZyZWc7IExFIHdpdGggQ0FQU0VOU0UmdHJhZGU7IGJ1dHRvbnMgYW5kIHNsaWRlciIsInJpZCI6InNoYWhzaHViaGFtcyIsIkRvYyB2ZXJzaW9uIjoiNi4xLjAiLCJEb2MgTGFuZ3VhZ2UiOiJFbmdsaXNoIiwiRG9jIERpdmlzaW9uIjoiTUNEIiwiRG9jIEJVIjoiSUNXIiwiRG9jIEZhbWlseSI6IlBTT0MifQ==)
 
 ## Requirements
 
@@ -30,7 +30,8 @@ This code example uses FreeRTOS. visit the FreeRTOS website for documentation an
 - [PSoC&trade; 62S1 Wi-Fi Bluetooth&reg; Pioneer Kit](https://www.infineon.com/CYW9P62S1-43438EVB-01) (`CYW9P62S1-43438EVB-01`)
 - [PSoC&trade; 62S1 Wi-Fi Bluetooth&reg; Pioneer Kit](https://www.infineon.com/CYW9P62S1-43012EVB-01) (`CYW9P62S1-43012EVB-01`)
 - [PSoC&trade; 62S3 Wi-Fi Bluetooth&reg; Prototyping Kit](https://www.infineon.com/CY8CPROTO-062S3-4343W) (`CY8CPROTO-062S3-4343W`)
-- [PSoC&trade; 62S2 Evaluation Kit](https://www.infineon.com/CY8CEVAL-062S2) (`CY8CEVAL-062S2`, `CY8CEVAL-062S2-LAI-4373M2`,`CY8CEVAL-062S2-CYW43022CUB`)
+- [PSoC&trade; 62S2 Evaluation Kit](https://www.infineon.com/CY8CEVAL-062S2) (`CY8CEVAL-062S2`, `CY8CEVAL-062S2-LAI-4373M2`,`CY8CEVAL-062S2-CYW43022CUB`,
+`CY8CEVAL-062S2-CYW955513SDM2WLIPA`)
 - [PSoC&trade; 6 Bluetooth&reg; LE Pioneer Kit](https://www.infineon.com/CY8CKIT-062-BLE) (`CY8CKIT-062-BLE`)
 
 ## Hardware setup
@@ -431,6 +432,7 @@ Document title: *CE230317* – *Bluetooth&reg; LE with CAPSENSE&trade; buttons a
 | 5.1.1   | Readme update 
 | 5.1.2   | Added support for CY8CEVAL-062S2-CYW43022CUB
 | 6.0.0   | CAPSENSE&trade; version update to 4.X. <br> Added BSP support for CY8CKIT-062-BLE; Bluetooth&reg; stack update and code improvements
+|6.1.0    | Added support for CY8CEVAL-062S2-CYW955513SDM2WLIPA
 
 ------
 
